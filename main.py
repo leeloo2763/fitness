@@ -245,12 +245,6 @@ function loadSingleExerciseStats() {
     });
 }
 
-// Концовка скриптов вынесена в JS_CODE_2 во избежание переполнения буфера
-</script>
-"""
-
-JS_CODE_2 = """
-<script>
 function toggleDetails(element) {
     let details = element.nextElementSibling;
     details.style.display = (details.style.display === "block") ? "none" : "block";
@@ -352,10 +346,13 @@ function loadDayData(){
 }
 
 function changeSets(event, exName, delta){ 
-    event.stopPropagation(); 
-    const d = document.getElementById("target_date").value; 
-    fetch("/update_plan_sets", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({date:d, ex:exName, delta:delta})}).then(()=>loadDayData()); 
+    event.stopPropagation();
+    const d = document.getElementById("target_date").value;
+    fetch("/update_plan_sets", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({date:d, ex:exName, delta:delta})}).then(()=>loadDayData());
 }
+"""
+JS_CODE_2 = """
+<script>
 function selectExerciseForExecution(name) { 
     currentlyExecutingExercise = name; 
     document.getElementById("active_ex_title").innerText = ": " + name; 
@@ -491,6 +488,7 @@ function saveCurrentSet(){
 </body>
 </html>
 """
+
 # Финальная сборка сверхлегкого интерфейса
 HTML_CODE = HTML_TEMPLATE.replace("</body>\n</html>", "") + JS_CODE + JS_CODE_2
 
@@ -499,7 +497,7 @@ def index():
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM exercise_base WHERE is_active = 1 ORDER BY name ASC")
-        exercises = [row for row in cursor.fetchall()]
+        exercises = [row[0] for row in cursor.fetchall()]
     return render_template_string(HTML_CODE, exercises=exercises)
 
 @app.route('/get_day_data')
@@ -508,10 +506,10 @@ def get_day_data():
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT exercise_name, planned_sets FROM daily_plans WHERE date = ?", (target_date,))
-        plan = [{"ex": row, "sets": row} for row in cursor.fetchall()]
+        plan = [{"ex": row[0], "sets": row[1]} for row in cursor.fetchall()]
         
         cursor.execute("SELECT id, exercise_name, set_num, reps, weight, start_time, duration FROM workout_history WHERE date = ?", (target_date,))
-        history = [{"id": row, "ex": row, "setNum": row, "reps": row, "weight": row, "time": row, "duration": row} for row in cursor.fetchall()]
+        history = [{"id": row[0], "ex": row[1], "setNum": row[2], "reps": row[3], "weight": row[4], "time": row[5], "duration": row[6]} for row in cursor.fetchall()]
     return jsonify({"plan": plan, "history": history})
 
 @app.route('/get_global_stats')
@@ -520,11 +518,11 @@ def get_global_stats():
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(DISTINCT date) FROM workout_history WHERE exercise_name != '🧘 Вестибулярная гимнастика'")
         res_days = cursor.fetchone()
-        days = res_days if res_days and res_days else 0
+        days = res_days[0] if res_days and res_days[0] else 0
         
         cursor.execute("SELECT COUNT(*) FROM workout_history WHERE exercise_name = '🧘 Вестибулярная гимнастика'")
         res_vest = cursor.fetchone()
-        vest = res_vest if res_vest and res_vest else 0
+        vest = res_vest[0] if res_vest and res_vest[0] else 0
         
         cursor.execute("""
             SELECT exercise_name, COUNT(DISTINCT date) as days_cnt 
@@ -538,19 +536,19 @@ def get_global_stats():
         
         top_exercises = []
         for row in top_rows:
-            ex_name = row
-            days_cnt = row
+            ex_name = row[0]
+            days_cnt = row[1]
             
             cursor.execute("SELECT MAX(weight), MAX(duration) FROM workout_history WHERE exercise_name = ?", (ex_name,))
             rec = cursor.fetchone()
-            max_w = rec if rec and rec else 0.0
-            max_dur = rec if rec and rec else 0
+            max_w = rec[0] if rec and rec[0] else 0.0
+            max_dur = rec[1] if rec and rec[1] else 0
             
             max_r = 0
             if max_w > 0:
                 cursor.execute("SELECT MAX(reps) FROM workout_history WHERE exercise_name = ? AND weight = ?", (ex_name, max_w))
                 r_row = cursor.fetchone()
-                max_r = r_row if r_row and r_row else 0
+                max_r = r_row[0] if r_row and r_row[0] else 0
             
             cursor.execute("""
                 SELECT date, MAX(weight), MAX(reps), COUNT(*), MAX(duration)
@@ -561,7 +559,7 @@ def get_global_stats():
                 LIMIT 5
             """, (ex_name,))
             h_rows = cursor.fetchall()
-            ex_history = [{"date": h, "w": h, "r": h, "sets": h, "dur": h} for h in h_rows]
+            ex_history = [{"date": h[0], "w": h[1], "r": h[2], "sets": h[3], "dur": h[4]} for h in h_rows]
             
             top_exercises.append({
                 "name": ex_name,
@@ -738,10 +736,7 @@ from jnius import autoclass
 
 class FitnessDiaryApp(App):
     def build(self):
-        # Стартуем сервер Flask в изолированном потоке
         threading.Thread(target=start_flask, daemon=True).start()
-        
-        # Откладываем создание WebView на 2 секунды, чтобы порт точно открылся
         Clock.schedule_once(self.create_webview, 2.0)
         return Widget()
 
@@ -757,16 +752,12 @@ class FitnessDiaryApp(App):
             self.webview = WebView(activity)
             self.webview.getSettings().setJavaScriptEnabled(True)
             self.webview.getSettings().setDomStorageEnabled(True)
-            
-            # Заставляем ссылки открываться внутри приложения, а не вылетать в браузер
             self.webview.setWebViewClient(WebViewClient())
             self.webview.loadUrl('http://127.0.0')
             
-            # Безопасный вывод на главный экран Android
             activity.setContentView(self.webview)
         except Exception as e:
-            print(f"Ошибка инициализации WebView: {e}")
+            print(f"Error: {e}")
 
 if __name__ == '__main__':
     FitnessDiaryApp().run()
-
