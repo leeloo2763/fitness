@@ -1,0 +1,55 @@
+name: Build Android APK
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsqlite3-dev openjdk-17-jdk python3-pip zip unzip
+          pip install --upgrade buildozer cython==0.29.33
+
+      - name: Generate buildozer.spec
+        run: |
+          cat <<EOF > buildozer.spec
+          [app]
+          title = Фитнес Дневник
+          package.name = fitnessdiary
+          package.domain = org.fitness
+          source.dir = .
+          source.include_exts = py
+          version = 1.0
+          requirements = python3,kivy,flask,sqlite3,jinja2,werkzeug,click,itsdangerous,setuptools
+          orientation = portrait
+          fullscreen = 1
+          android.permissions = INTERNET,WAKE_LOCK
+          android.api = 34
+          android.minapi = 24
+          android.ndk = 25b
+          android.ndk_api = 24
+          android.archs = arm64-v8a
+          android.private_storage = True
+          android.accept_sdk_license = True
+          [buildozer]
+          log_level = 2
+          warn_on_root = 0
+          EOF
+
+      - name: Build APK with Buildozer
+        run: |
+          yes y | buildozer -v android debug
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitness-diary-apk
+          path: bin/*.apk
