@@ -18,7 +18,7 @@ jobs:
           sudo apt-get install -y libsqlite3-dev openjdk-17-jdk python3-pip zip unzip
           pip install --upgrade buildozer cython==0.29.33
 
-      # СЕРВЕР САМ СКАЧАЕТ ВЕСЬ ЧИСТЫЙ КОД ИДЕАЛЬНО И БЕЗ ОБРЕЗАНИЙ
+      # СЕРВЕР САМ СКАЧАЕТ ВЕСЬ СТАБИЛЬНЫЙ МОБИЛЬНЫЙ КОД НА КИВИ
       - name: Download Full Main Code
         run: |
           wget -O main.py https://pastebin.com
