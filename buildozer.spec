@@ -6,8 +6,8 @@ source.dir = .
 source.include_exts = py
 version = 1.0
 
-# Строго зафиксированные требования без искажений
-requirements = python3,kivy,flask,sqlite3,jinja2,werkzeug,click,itsdangerous,setuptools
+# Фиксируем стабильный Python 3.11 и hostpython3, под которые есть все библиотеки
+requirements = python3==3.11.1,hostpython3==3.11.1,kivy,flask,sqlite3,jinja2,werkzeug,click,itsdangerous,setuptools,pyjnius
 
 orientation = portrait
 fullscreen = 1
