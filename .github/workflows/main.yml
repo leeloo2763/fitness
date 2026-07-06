@@ -18,6 +18,11 @@ jobs:
           sudo apt-get install -y libsqlite3-dev openjdk-17-jdk python3-pip zip unzip
           pip install --upgrade buildozer cython==0.29.33
 
+      # СЕРВЕР САМ СКАЧАЕТ ВЕСЬ ЧИСТЫЙ КОД ИДЕАЛЬНО И БЕЗ ОБРЕЗАНИЙ
+      - name: Download Full Main Code
+        run: |
+          wget -O main.py https://pastebin.com
+
       - name: Build APK with Buildozer
         run: |
           yes y | buildozer -v android debug
